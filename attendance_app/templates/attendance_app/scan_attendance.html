@@ -1,0 +1,52 @@
+{% extends 'attendance_app/base.html' %}
+{% load static %}
+{% block content %}
+<h2 class="text-xl font-semibold mb-6">📸 Face Scan - Mark Attendance</h2>
+
+<div class="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+    <video id="video" autoplay class="w-full max-w-md rounded shadow"></video>
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <button id="captureBtn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700">Scan Face</button>
+    <div id="response" class="text-sm mt-2"></div>
+</div>
+
+<div id="response" class="mt-4 text-sm"></div>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const captureBtn = document.getElementById('captureBtn');
+
+// Access webcam
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
+    video.srcObject = stream;
+})
+.catch(err => {
+    alert("Cannot access camera: " + err);
+});
+
+captureBtn.addEventListener('click', async () => {
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(async function(blob) {
+        const formData = new FormData();
+        formData.append('image', blob, 'snapshot.jpg');
+
+        const res = await fetch('/api/recognize-face/', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+        document.getElementById('response').textContent = res.ok
+            ? `✅ Attendance marked for ${data.name}`
+            : `❌ Not recognized`;
+    }, 'image/jpeg');
+});
+</script>
+{% endblock %}

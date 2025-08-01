@@ -1,0 +1,23 @@
+{% extends 'attendance_app/base.html' %}
+{% load static %}
+
+{% block content %}
+<h2 class="text-xl font-semibold mb-6">✅ Today's Attendance</h2>
+<ul id="todayList" class="space-y-2"></ul>
+
+<script>
+async function fetchToday() {
+    const res = await fetch('/api/attendance/today/');
+    const data = await res.json();
+    const list = document.getElementById('todayList');
+    list.innerHTML = '';
+    data.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = `${item.member_name} at ${item.time}`;
+        li.className = "bg-gray-800 p-3 rounded";
+        list.appendChild(li);
+    });
+}
+fetchToday();
+</script>
+{% endblock %}

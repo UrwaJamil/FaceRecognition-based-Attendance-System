@@ -1,0 +1,27 @@
+{% extends 'attendance_app/base.html' %}
+{% load static %}
+{% block content %}
+<h2 class="text-xl font-semibold mb-6">📋 Recognition Logs</h2>
+<ul id="logsList" class="space-y-2"></ul>
+
+<script>
+async function fetchLogs() {
+    const res = await fetch('/api/logs/');
+    const data = await res.json();
+    const list = document.getElementById('logsList');
+    list.innerHTML = '';
+    data.forEach(item => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <strong>${item.member_name || 'Unknown'}</strong> –
+            ${item.recognized ? '<span class="text-green-400">Recognized</span>' : '<span class="text-red-400">Failed</span>'}
+            at ${new Date(item.detected_at).toLocaleString()}
+        `;
+        li.className = "bg-gray-800 p-3 rounded";
+        list.appendChild(li);
+    });
+}
+fetchLogs();
+</script>
+{% endblock %}
+

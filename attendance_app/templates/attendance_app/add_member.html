@@ -1,0 +1,25 @@
+{% extends 'attendance_app/base.html' %}
+{% load static %}
+{% block content %}
+<h2 class="text-xl font-semibold mb-6">Add New Member</h2>
+
+<form id="addMemberForm" class="space-y-4 bg-gray-800 p-6 rounded shadow-lg" enctype="multipart/form-data">
+    <input type="text" name="name" placeholder="Name" class="w-full p-3 rounded bg-gray-700" required>
+    <input type="email" name="email" placeholder="Email" class="w-full p-3 rounded bg-gray-700" required>
+    <input type="file" name="image" class="w-full p-3 rounded bg-gray-700" accept="image/*" required>
+    <button type="submit" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Submit</button>
+</form>
+
+<div id="response" class="mt-4 text-sm"></div>
+
+<script>
+document.getElementById('addMemberForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = new FormData(this);
+    const res = await fetch('/api/members/', { method: 'POST', body: form });
+    const data = await res.json();
+    document.getElementById('response').textContent = res.ok ? '✅ Member added successfully!' : JSON.stringify(data);
+});
+</script>
+{% endblock %}
+
