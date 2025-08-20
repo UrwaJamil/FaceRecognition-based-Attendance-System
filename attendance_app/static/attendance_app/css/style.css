@@ -1,45 +1,27 @@
 body {
-  margin: 0;
-  font-family: 'Poppins', sans-serif;
-  background-color: #f4f6f8;
-  color: #333;
+  font-family: Arial, sans-serif;
+  margin: 20px;
 }
 
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #2d3436;
-  padding: 10px 20px;
-  color: white;
+ul li {
+  margin: 8px 0;
+  font-size: 18px;
 }
 
-.logo {
-  font-size: 1.5rem;
-  font-weight: bold;
+#calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-top: 20px;
 }
 
-.nav-links a {
-  color: white;
-  margin-left: 20px;
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.nav-links a:hover {
-  color: #00cec9;
-}
-
-.content {
-  padding: 40px 20px;
-}
-
-.footer {
+.day {
+  border: 1px solid #ddd;
+  padding: 10px;
   text-align: center;
-  padding: 20px;
-  background-color: #2d3436;
-  color: white;
-  position: fixed;
-  width: 100%;
-  bottom: 0;
 }
+
+.present { background: lightgreen; }
+.absent { background: lightcoral; }
+.late { background: orange; }
+.holiday { background: lightgray; }

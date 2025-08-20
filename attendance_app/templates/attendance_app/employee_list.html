@@ -1,0 +1,103 @@
+{% extends 'attendance_app/base.html' %}
+{% load static %}
+{% block content %}
+<h2 class="text-2xl font-bold mb-6">👨‍💼 Employees Attendance</h2>
+
+<style>
+table.table-auto {
+  border-collapse: collapse;
+  background-color: #ffffff; /* table ka background white */
+  color: #111827; /* dark text */
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table-auto th,
+.table-auto td {
+  border: 1px solid #d1d5db; /* light gray borders */
+  padding: 12px 15px;
+  text-align: center;
+}
+
+/* Header row ka color change */
+.table-auto thead {
+  background-color: #393972; /* dark gray header */
+}
+
+.table-auto th {
+  color: white; /* white text for header */
+  font-weight: 600;
+}
+
+/* Sirf Employee column background alag ho */
+.table-auto td:first-child {
+  background-color: #f3f4f6; /* light gray for Employee column */
+  font-weight: 500;
+}
+
+.table-auto tbody tr:nth-child(even) {
+  background-color: #ffffff; /* even row white */
+}
+
+.table-auto tbody tr:hover {
+  background-color: #e5e7eb; /* hover effect */
+  cursor: pointer;
+}
+</style>
+
+<table class="table-auto w-full">
+  <thead>
+    <tr>
+      <th class="px-4 py-2">Employee</th>
+      <th class="px-4 py-2">Check In</th>
+      <th class="px-4 py-2">Check Out</th>
+      <th class="px-4 py-2">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for emp in employees %}
+      <tr>
+        <td class="px-4 py-2">
+          <a href="{% url 'employee_yearly_log' emp.id %}" class="text-blue-600 hover:underline">
+            {{ emp.name }}
+          </a>
+        </td>
+        <td class="px-4 py-2">
+          {% if emp.today_check_in %}
+            {{ emp.today_check_in }}
+          {% else %}
+            ❌ Not Checked In
+          {% endif %}
+        </td>
+        <td class="px-4 py-2">
+          {% if emp.today_check_out %}
+            {{ emp.today_check_out }}
+          {% else %}
+            -- 
+          {% endif %}
+        </td>
+        <td class="px-4 py-2">
+          {% if emp.status == "early_in" %}
+            🌅 Early Check-In
+          {% elif emp.status == "on_time" %}
+            ✅ On Time
+          {% elif emp.status == "late_in" %}
+            ⏰ Late Check-In
+          {% elif emp.status == "early_out" %}
+            ⚠ Early Check-Out
+          {% elif emp.status == "valid_out" %}
+            ✅ Valid Check-Out
+          {% else %}
+            ❌ Absent
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4" class="text-center p-4">No employees found</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

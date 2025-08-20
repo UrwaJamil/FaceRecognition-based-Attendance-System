@@ -1,0 +1,112 @@
+{% extends 'attendance_app/base.html' %}
+{% load static %}
+{% block content %}
+
+<style>
+  .cell { width: 5rem; height: 3rem; font-size: 11px; text-align: center; border: 1px solid #e5e7eb; }
+  .header-cell { background: #393972; font-weight: 600; font-size: 10px; color:white; }
+  .month-row { background: #fafafa; font-weight: 600; font-size: 14px; color:white; }
+  .stat-card { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 18px; background:#fff; border:1px solid #eee; }
+  .legend-dot { display:inline-block; width:10px; height:10px; border-radius:9999px; margin-right:6px; vertical-align:middle; }
+  .bg-present { background: #4ade80; color:white; font-weight:bold; }  /* green */
+  .bg-absent  { background: #d1d5db; color:#111; }                    /* grey */
+  .bg-weekend { background: #9ca3af; color:#111; }                    /* darker grey for weekend */
+</style>
+
+<div style="max-width:1350px; margin: 0 auto; padding: 24px;">
+
+  <!-- Header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <h1 style="font-size:28px; font-weight:800; letter-spacing:-.2px;">EMPLOYEE ATTENDANCE RECORD</h1>
+    <form method="get" style="display:flex; align-items:center; gap:8px;">
+      <input type="hidden" name="member_id" value="{{ employee.id }}">
+      <select name="year" style="border:1px solid #ddd; border-radius:8px; padding:6px 10px; color:#111827; ">
+        {% for y in year_choices %}
+          <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+      <button style="padding:6px 12px; border-radius:10px; background:#111827; color:#fff; border:0;">Go</button>
+    </form>
+  </div>
+
+  <!-- Legend -->
+  <div style="margin-top:8px; font-size:12px; display:flex; flex-wrap:wrap; gap:16px;">
+    <div><span class="legend-dot" style="background:#22c55e;"></span>Present</div>
+    <div><span class="legend-dot" style="background:#9ca3af;"></span>Absent</div>
+    <div class="text-gray-500">(Weekends are lightly shaded)</div>
+  </div>
+
+  <!-- Year grid as one big table -->
+  <div style="margin-top:16px; overflow-x:auto; border:1px solid #eee; border-radius:14px;">
+    <table style="border-collapse:collapse; width:100%;">
+      <thead>
+        <tr>
+          <th class="cell header-cell" style="position:sticky; left:0; z-index:10; background:#393972;">Weekday/Month</th>
+          {% for _ in "123456" %}
+            <th class="cell header-cell">SUN</th>
+            <th class="cell header-cell">MON</th>
+            <th class="cell header-cell">TUE</th>
+            <th class="cell header-cell">WED</th>
+            <th class="cell header-cell">THU</th>
+            <th class="cell header-cell">FRI</th>
+            <th class="cell header-cell">SAT</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in months %}
+          <tr class="month-row">
+            <td class="cell" style="position:sticky; left:0; z-index:10; background:#6c6c91; color:white;">{{ m.name }}</td>
+            {% for week in m.weeks %}
+              {% for d in week %}
+                {% if d.blank %}
+                  <td class="cell bg-weekend" style="background:#fafafa;"></td>
+                {% else %}
+                  <td class="cell
+                      {% if d.weekend %} bg-weekend {% endif %}
+                      {% if d.status == 'P' %} bg-present
+                      {% elif d.status == 'A' %} bg-absent
+                      {% endif %}"
+                      title="{{ d.date }} — {{ d.status_label }}">
+                    {{ d.day }}
+                  </td>
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Key Statistics -->
+  <h2 style="margin-top:24px; font-size:22px; font-weight:800;">KEY STATISTICS</h2>
+  <div style="display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:12px; margin-top:12px;">
+    <div class="stat-card">
+      <div style="font-size:12px; color:#111827;">Days on leave</div>
+      <div style="font-size:32px; font-weight:800;">{{ stats.leave_days }}</div>
+    </div>
+    <div class="stat-card">
+      <div style="font-size:12px; color:#111827;">Working days</div>
+      <div style="font-size:32px; font-weight:800;">{{ stats.working_days }}</div>
+    </div>
+    <div class="stat-card">
+      <div style="font-size:12px; color:#111827;"># Sick days</div>
+      <div style="font-size:32px; font-weight:800;">{{ stats.sick_days }}</div>
+    </div>
+    <div class="stat-card">
+      <div style="font-size:12px; color:#111827;">Vacation</div>
+      <div style="font-size:32px; font-weight:800;">{{ stats.vacation_days }}</div>
+    </div>
+    <div class="stat-card">
+      <div style="font-size:12px; color:#111827;">Bereavement</div>
+      <div style="font-size:32px; font-weight:800;">{{ stats.bereavement_days }}</div>
+    </div>
+    <div class="stat-card">
+      <div style="font-size:12px; color:#111827;">Other</div>
+      <div style="font-size:32px; font-weight:800;">{{ stats.other_days }}</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

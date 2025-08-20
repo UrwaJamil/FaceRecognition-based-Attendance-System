@@ -6,18 +6,28 @@
 <ul id="todayList" class="space-y-2"></ul>
 
 <script>
-async function fetchToday() {
-    const res = await fetch('/api/attendance/today/');
-    const data = await res.json();
-    const list = document.getElementById('todayList');
-    list.innerHTML = '';
-    data.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = `${item.member_name} at ${item.time}`;
-        li.className = "bg-gray-800 p-3 rounded";
-        list.appendChild(li);
-    });
-}
-fetchToday();
+    async function fetchToday() {
+        const res = await fetch('/api/attendance/today/');
+        const data = await res.json();
+        const list = document.getElementById('todayList');
+        list.innerHTML = '';
+
+        data.forEach(item => {
+            const li = document.createElement('li');
+
+            // simple text instead of clickable link
+            li.innerHTML = `
+        <span class="text-white-400 font-semibold">
+            ${item.member_name}
+        </span> 
+        <span class="ml-2 text-gray-300">at ${item.time}</span>
+    `;
+
+            li.className = "bg-gray-800 p-3 rounded";
+            list.appendChild(li);
+        });
+
+    }
+    fetchToday();
 </script>
 {% endblock %}

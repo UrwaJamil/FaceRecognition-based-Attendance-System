@@ -1,52 +1,307 @@
 {% extends 'attendance_app/base.html' %}
 {% load static %}
+
 {% block content %}
-<h2 class="text-xl font-semibold mb-6">📸 Face Scan - Mark Attendance</h2>
+<div class="page">
+    <h2 class="title">📸 Face Scan — Mark Attendance</h2>
 
-<div class="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-    <video id="video" autoplay class="w-full max-w-md rounded shadow"></video>
-    <canvas id="canvas" class="hidden"></canvas>
+    <div class="video-wrap">
+        <video id="video" autoplay playsinline muted></video>
 
-    <button id="captureBtn" class="bg-blue-600 px-6 py-2 rounded hover:bg-blue-700">Scan Face</button>
-    <div id="response" class="text-sm mt-2"></div>
+        <!-- scanning overlay -->
+        <div id="scanningOverlay" class="overlay hidden">
+            <div class="overlay-text">Scanning...</div>
+        </div>
+
+        <!-- status badge -->
+        <div id="faceStatus" class="status">
+            Status: <span id="statusText">Initializing...</span>
+        </div>
+    </div>
+
+    <!-- hidden canvas -->
+    <canvas id="canvas" class="hide"></canvas>
+
+    <!-- response area -->
+    <div id="response" class="response"></div>
+
+    <!-- inline CSS inside body as requested -->
+    <style>
+        .page {
+            max-width: 720px;
+            margin: 24px auto;
+            padding: 16px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .08);
+            box-sizing: border-box;
+            font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            color: #111827;
+        }
+
+        .title {
+            margin: 0 0 16px 0;
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .video-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #f3f4f6;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+            transform: scaleX(-1);
+            /* mirror like selfie */
+        }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, .5);
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .overlay-text {
+            color: #fff;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: .3px;
+        }
+
+        .status {
+            position: absolute;
+            left: 8px;
+            bottom: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #fff;
+            background: rgba(107, 114, 128, .75);
+            /* gray */
+            backdrop-filter: saturate(140%) blur(2px);
+            transition: background .25s ease;
+        }
+
+        .status.ok {
+            background: rgba(16, 185, 129, .75);
+        }
+
+        /* green */
+        .status.warn {
+            background: rgba(245, 158, 11, .75);
+        }
+
+        /* amber */
+        .status.err {
+            background: rgba(239, 68, 68, .75);
+        }
+
+        /* red */
+
+        .hide {
+            display: none;
+        }
+
+        .response {
+            min-height: 24px;
+            margin-top: 14px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .pill {
+            display: inline-block;
+            margin: 6px 4px 0;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid;
+            font-weight: 500;
+        }
+
+        .pill.ok {
+            color: #065f46;
+            background: #f0fff4;
+            border-color: #68d391;
+        }
+
+        .pill.warn {
+            color: #7c2d12;
+            background: #fffaf0;
+            border-color: #f6ad55;
+        }
+
+        .pill.err {
+            color: #7f1d1d;
+            background: #fff5f5;
+            border-color: #fc8181;
+        }
+    </style>
 </div>
 
-<div id="response" class="mt-4 text-sm"></div>
+<!-- face-api.js -->
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.7/dist/face-api.min.js"></script>
 
 <script>
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const captureBtn = document.getElementById('captureBtn');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const responseDiv = document.getElementById('response');
+    const scanningOverlay = document.getElementById('scanningOverlay');
+    const statusBadge = document.getElementById('faceStatus');
+    const statusText = document.getElementById('statusText');
 
-// Access webcam
-navigator.mediaDevices.getUserMedia({ video: true })
-.then(stream => {
-    video.srcObject = stream;
-})
-.catch(err => {
-    alert("Cannot access camera: " + err);
-});
+    let isProcessing = false;
+    let lastScanTime = 0;
+    const scanInterval = 3000; // ms
+    let modelsLoaded = false;
 
-captureBtn.addEventListener('click', async () => {
-    const ctx = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    function setStatus(text, cls) {
+        statusText.textContent = text;
+        statusBadge.classList.remove('ok', 'warn', 'err');
+        if (cls) statusBadge.classList.add(cls);
+    }
 
-    canvas.toBlob(async function(blob) {
-        const formData = new FormData();
-        formData.append('image', blob, 'snapshot.jpg');
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
 
-        const res = await fetch('/api/recognize-face/', {
-            method: 'POST',
-            body: formData
-        });
+    // STEP 1 — load only the models you actually have
+    async function loadModels() {
+        try {
+            const MODEL_URL = "{% static 'attendance_app/models/' %}";
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+            // DO NOT load ssdMobilenetv1 unless its files also exist in the same folder
 
-        const data = await res.json();
-        document.getElementById('response').textContent = res.ok
-            ? `✅ Attendance marked for ${data.name}`
-            : `❌ Not recognized`;
-    }, 'image/jpeg');
-});
+            modelsLoaded = true;
+            setStatus('Models loaded ✅', 'ok');
+            console.log('✅ models loaded');
+        } catch (err) {
+            console.error('model load error:', err);
+            setStatus('Model load failed ❌', 'err');
+        }
+    }
+
+    // STEP 2 — start camera
+    async function initCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            await video.play();
+            setStatus('Camera started 🎥', 'ok');
+        } catch (err) {
+            console.error('camera error:', err);
+            setStatus('Camera error: ' + (err.message || err.name), 'err');
+        }
+    }
+
+    // STEP 3 — detection loop (runs only after models + camera are ready)
+    function startFaceDetection() {
+        if (!modelsLoaded) {
+            setStatus('Models not loaded yet ❌', 'err');
+            return;
+        }
+        const displaySize = { width: video.videoWidth, height: video.videoHeight };
+        faceapi.matchDimensions(canvas, displaySize);
+
+        setInterval(async () => {
+            if (!modelsLoaded || isProcessing) return;
+
+            const detections = await faceapi.detectAllFaces(
+                video,
+                new faceapi.TinyFaceDetectorOptions()
+            );
+
+            if (detections.length === 0) {
+                setStatus('No face detected', 'warn');
+                responseDiv.innerHTML = '';
+                return;
+            }
+
+            setStatus(`${detections.length} face(s) detected`, 'ok');
+
+            const now = Date.now();
+            if (now - lastScanTime < scanInterval) return;
+            lastScanTime = now;
+
+            isProcessing = true;
+            scanningOverlay.classList.remove('hidden');
+
+            // snapshot frame
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+            const formData = new FormData();
+            formData.append('image', blob, `scan_${Date.now()}.jpg`);
+
+            try {
+                const res = await fetch('/api/recognize-face/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                let html = '';
+
+                // Process recognized faces
+                let recognizedFaces = data.recognized.filter(r => r.status === 'recognized');
+                if (recognizedFaces.length) {
+                    for (const p of recognizedFaces) {
+                        html += `<div class="pill ok">✅ Recognized: <strong>${p.name}</strong> (Confidence: ${(p.confidence * 100).toFixed(1)}%)</div>`;
+                    }
+                }
+
+                // Process unknown faces
+                let unknownFaces = data.recognized.filter(r => r.status === 'unknown');
+                if (unknownFaces.length) {
+                    html += `<div class="pill warn">⚠ Unknown / Not Recognized Faces: ${unknownFaces.length}</div>`;
+                }
+
+                // If no faces detected at all
+                if (!data.recognized?.length) {
+                    html = `<div class="pill err">❌ No face detected</div>`;
+                }
+
+                responseDiv.innerHTML = html;
+            } catch (err) {
+                console.error(err);
+                responseDiv.innerHTML = `<div class="pill err">❌ Scan failed</div>`;
+            } finally {
+                isProcessing = false;
+                scanningOverlay.classList.add('hidden');
+            }
+        }, 1000);
+    }
+
+    // RUN: models → camera → detection
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadModels();
+        await initCamera();
+        startFaceDetection();
+    });
 </script>
 {% endblock %}

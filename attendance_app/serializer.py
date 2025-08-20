@@ -7,7 +7,7 @@ class MemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Member
-        fields = ['id', 'name', 'email', 'image', 'image_url', 'created_at']
+        fields = ['id', 'name', 'email', 'face_file', 'image_url', 'created_at']
 
     def get_image_url(self, obj):
         request = self.context.get('request')
@@ -17,10 +17,19 @@ class MemberSerializer(serializers.ModelSerializer):
     
 class AttendanceSerializer(serializers.ModelSerializer):
     member_name = serializers.CharField(source = 'member.name', read_only=True)
+    time = serializers.SerializerMethodField()
 
     class Meta:
         model = Attendance
-        fields = ['id', 'member', 'member_name', 'date', 'time']
+        fields = ["id", "member_name", "date", "check_in", "check_out", "time"]
+
+    def get_time(self, obj):
+        # Agar check_in ho tu wo dikhayega, warna check_out
+        if obj.check_in:
+            return obj.check_in.strftime("%H:%M:%S")
+        elif obj.check_out:
+            return obj.check_out.strftime("%H:%M:%S")
+        return "-"
 
 class CamerDeviceserializer(serializers.ModelSerializer):
     class Meta:

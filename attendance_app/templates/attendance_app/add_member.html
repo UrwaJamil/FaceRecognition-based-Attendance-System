@@ -3,23 +3,42 @@
 {% block content %}
 <h2 class="text-xl font-semibold mb-6">Add New Member</h2>
 
-<form id="addMemberForm" class="space-y-4 bg-gray-800 p-6 rounded shadow-lg" enctype="multipart/form-data">
+<form id="addMemberForm" class="space-y-4 bg-gray-800 p-6 rounded shadow-lg" enctype="multipart/form-data" method="post">
+    {% csrf_token %}
     <input type="text" name="name" placeholder="Name" class="w-full p-3 rounded bg-gray-700" required>
     <input type="email" name="email" placeholder="Email" class="w-full p-3 rounded bg-gray-700" required>
-    <input type="file" name="image" class="w-full p-3 rounded bg-gray-700" accept="image/*" required>
+    <input type="file" name="face_file" class="w-full p-3 rounded bg-gray-700" accept="image/*" required>
     <button type="submit" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Submit</button>
 </form>
 
-<div id="response" class="mt-4 text-sm"></div>
+<div id="response" class="mt-4 text-sm font-medium"></div>
 
 <script>
+    const csrfToken = '{{ csrf_token }}';
 document.getElementById('addMemberForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const form = new FormData(this);
-    const res = await fetch('/api/members/', { method: 'POST', body: form });
-    const data = await res.json();
-    document.getElementById('response').textContent = res.ok ? '✅ Member added successfully!' : JSON.stringify(data);
+    const responseDiv = document.getElementById('response');
+
+    try {
+        const res = await fetch('/api/members/', { method: 'POST', body: form });
+        const data = await res.json();
+
+        if (res.ok) {
+            responseDiv.textContent = '✅ Member added successfully!';
+            responseDiv.className = "text-green-500 mt-2";
+            this.reset();
+        } else {
+            // Show reason of failure
+            responseDiv.textContent = data.error || data.detail || '❌ Failed to add member';
+            responseDiv.className = "text-red-500 mt-2";
+            console.log("Error details:", data.details || data);
+        }
+    } catch (error) {
+        responseDiv.textContent = '❌ Error: ' + error.message;
+        responseDiv.className = "text-red-500 mt-2";
+    }
 });
 </script>
-{% endblock %}
 
+{% endblock %}
